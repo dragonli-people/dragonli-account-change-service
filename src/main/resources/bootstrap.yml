@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: ${CONFIG_APP_NAME:service-config}
+  profiles:
+    active: ${EVN:dev}
+  cloud:
+    config:
+      uri: ${CONFIG_SERVER:http://192.168.7.109:8888}
+
+
+
+
+DS_ACCOUNT_IS_PRIMARY: true
+
+# for package
+ACCOUNT_DATA_SOURCE_CONFIG: data-source-configs.account-db
+ACCOUNT_DATA_SOURCE_CONFIG_LOCAL: @ACCOUNT_DATA_SOURCE_CONFIG_LOCAL@
+ACCOUNT_REDIS_CONFIG: ${LOCAL_ACCOUNT_REDIS_CONFIG:service.modules.account.redis-config}

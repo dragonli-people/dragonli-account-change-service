@@ -1,0 +1,19 @@
+package org.dragonli.service.modules.userservice;
+
+public enum ErrorCode {
+    ONE_OF_PARAS_IS_NULL,
+    USERNAME_REPEAT,
+    EMAIL_REPEAT,
+    PHONE_REPEAT,
+    EMAIL_FORMAT_ERROR,
+    PHONE_FORMAT_ERROR,
+    USERNAME_NOT_EXSIT,
+    USER_ID_NOT_EXSIT,
+    PASSWD_ERROR,
+    NO_RESET_CODE,
+    CODE_TIME_OUT,
+    USERNAME_FORMAT_ERROR,
+    PASSWD_FORMAT_ERROR,
+    CODE_ERROR,
+    NO_CODE,
+}

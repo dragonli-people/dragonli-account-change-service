@@ -1,0 +1,82 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.dragonli.service</groupId>
+		<artifactId>dubbo-service-parent</artifactId>
+		<version>1.0.4</version>
+	</parent>
+
+	<artifactId>dragonli-account-change-service</artifactId>
+	<packaging>jar</packaging>
+	<name>dragonli-account-change-service</name>
+	<version>1.0</version>
+
+	<properties>
+		<ACCOUNT_DATA_SOURCE_CONFIG_LOCAL></ACCOUNT_DATA_SOURCE_CONFIG_LOCAL>
+	</properties>
+
+	<dependencies>
+
+
+		<dependency>
+			<groupId>org.dragonli.service</groupId>
+			<artifactId>dragonli-account-service-interfaces</artifactId>
+			<version>0.9.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.dragonli.service</groupId>
+			<artifactId>dragonli-general-service-interfaces</artifactId>
+			<version>1.0.4</version>
+		</dependency>
+
+
+		<dependency>
+			<groupId>org.dragonli.service</groupId>
+			<artifactId>dragonli-account-model-repository</artifactId>
+			<version>0.9.0</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.dragonli.service</groupId>
+					<artifactId>dragonli-java-tools</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+	</dependencies>
+
+	<build>
+		<finalName>user-service</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>default-resources</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>target/classes</outputDirectory>
+							<useDefaultDelimiters>false</useDefaultDelimiters>
+							<delimiters><delimiter>@</delimiter></delimiters>
+							<resources>
+								<resource>
+									<directory>src/main/resources/</directory>
+									<filtering>true</filtering>
+									<includes>
+										<include>**/bootstrap.yml</include>
+									</includes>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>
