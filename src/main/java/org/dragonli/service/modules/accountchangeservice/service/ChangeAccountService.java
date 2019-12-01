@@ -80,6 +80,11 @@ public class ChangeAccountService  {
         }
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public FundFlowEvidenceEntity saveEvidence(FundFlowEvidenceEntity evidence) throws Exception {
+        return fundFlowEvidenceRepository.save(evidence);
+    }
+
     /**
      * 对资金变动进行真正的处理，是多线程的，跟随tick4的线程。因为新开线程是无意义的，被锁着的用户还是锁着的。由tick启动，无需在start中启动
      *
@@ -176,7 +181,7 @@ public class ChangeAccountService  {
         //获得当前账户余额
         BigDecimal balance = account.getBalance();
         BigDecimal frozen = account.getFrozen();
-        evidence.setBalance(balance);
+//        evidence.setFlowAmount(balance);
 //		boolean successed = changeHandler.get(record.accountType)
 //				.get(record.currency).get(record.flowType).change(account, record.flowAmount);
         boolean successed = true;
@@ -222,6 +227,7 @@ public class ChangeAccountService  {
         record.setBeforeFrozen(frozen);
         record.setAfterFrozen(account.getFrozen());
         record.setRecordStatus(AccountAssetsRecordStatus.CLOSE);
+        record.setStatus(successed);
 //		assetDb.update(record);
         accountAssetsRecordRepository.save(record);
         logger.info("update record:" + orderId + "||" + record.getId());

@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
@@ -108,11 +109,8 @@ public class AccountChangeServiceImpl implements AccountChangeService {
         });
     }
 
-    @Value("${crypto.ui.smallTimeout}")
-    public int evidenceTimeout;
-
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Boolean addChangeRecord(Long evidenceId) throws Exception{
         FundFlowEvidenceEntity evidenceEntity = fundFlowEvidenceRepository.get(evidenceId);
         if(null == evidenceEntity)return false;
@@ -138,7 +136,6 @@ public class AccountChangeServiceImpl implements AccountChangeService {
         record.setAccountId(evidence.getAccountId());
         record.setUserId(evidence.getUserId());
         record.setFlowAmount(evidence.getFlowAmount());
-        record.setFlowTypeRecord(evidence.getFlowType());
         long accountId = record.getAccountId() != 0 ? record.getAccountId() : evidence.getAccountId();
         account = accountsRepository.getOne(accountId);
 
@@ -155,7 +152,10 @@ public class AccountChangeServiceImpl implements AccountChangeService {
         record.setAccountVersion(account.getAccountVersion());
         record.setRecordStatus(AccountAssetsRecordStatus.INIT);
         record.setOrderId(evidence.getOrderId());
-        AssetEntity ass = assetRepository.findByCode(evidence.getCurrency());
+        record.setCreatedAt(System.currentTimeMillis());
+        record.setUpdatedAt(System.currentTimeMillis());
+        record.setVersion(0);
+        AssetEntity ass = assetRepository.findByCurrency(evidence.getCurrency());
         record.setAssetId(ass.getId());
 
         record.setRemark(record.getRemark() == null ? "" : record.getRemark().trim());
@@ -310,27 +310,32 @@ public class AccountChangeServiceImpl implements AccountChangeService {
                 //		assetDb.save(saves);
 
                 //		accountAssetsRecordRepository.saveAll(saves);
-                logger.info("tick3  saves : " +
-                        saves.stream().map(AccountAssetsRecordEntity::getEvidenceId).map(Object::toString).collect(
-                                Collectors.joining(",")));
-                logger.info("tick3  saves : " +
-                        saves.stream().map(AccountAssetsRecordEntity::getOrderId).map(Object::toString).collect(
-                                Collectors.joining(",")));
+//                logger.info("tick3  saves : " +
+//                        saves.stream().map(AccountAssetsRecordEntity::getEvidenceId).map(Object::toString).collect(
+//                                Collectors.joining(",")));
+//                logger.info("tick3  saves : " +
+//                        saves.stream().map(AccountAssetsRecordEntity::getOrderId).map(Object::toString).collect(
+//                                Collectors.joining(",")));
                 //将启用一个新事务，批量写入！！！此步操作极其重要！！
                 if(len!=0) {
-                    changeAccountService.saveAssetsRecord(saves);
-                    cacheBeforeSaveCount.addAndGet(-len);
+//                    try{
+                        saves = changeAccountService.saveAssetsRecord(saves);
+                        cacheBeforeSaveCount.addAndGet(-len);
+//                    }catch (Exception e){
+//                        e.printStackTrace();
+//                        logger.error("====",e);
+//                    }
                 }
                 oldLastId = lastId;
 
                 //将启用一个新事务，批量读取！！！此步操作极其重要！！
                 List<AccountAssetsRecordEntity> recordList = changeAccountService.getRecordList(lastId);
-                logger.info("tick3 batch get : " +
-                        recordList.stream().map(AccountAssetsRecordEntity::getEvidenceId).map(Object::toString).collect(
-                                Collectors.joining(",")));
-                logger.info("tick3 batch get : " +
-                        recordList.stream().map(AccountAssetsRecordEntity::getOrderId).map(Object::toString).collect(
-                                Collectors.joining(",")));
+//                logger.info("tick3 batch get : " +
+//                        recordList.stream().map(AccountAssetsRecordEntity::getEvidenceId).map(Object::toString).collect(
+//                                Collectors.joining(",")));
+//                logger.info("tick3 batch get : " +
+//                        recordList.stream().map(AccountAssetsRecordEntity::getOrderId).map(Object::toString).collect(
+//                                Collectors.joining(",")));
                 recordList.stream().filter(record -> AccountChangeVars.groups.contains(record.getGroupId()) &&
                         record.getRecordStatus().equals(AccountAssetsRecordStatus.INIT) &&
                         !handlingKeys.containsKey(record.getId())
