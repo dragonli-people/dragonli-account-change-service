@@ -23,26 +23,25 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
-public class ChangeAccountService  {
-
+public class ChangeAccountService {
     final Logger logger = LoggerFactory.getLogger(getClass());
-
     @Autowired
     AccountAssetsRecordRepository accountAssetsRecordRepository;
     @Autowired
     FundFlowEvidenceRepository fundFlowEvidenceRepository;
     @Autowired
     AccountsRepository accountsRepository;
-
     @Autowired
     @Qualifier(AccountConstants.ACCOUNT_REDIS)
     RedissonClient accountRedisson;
-
-    @Value("${ACCOUNT_CALL_BACK_REDIS_KEY:"+AccountConstants.DEFAULT_ACCOUNT_CALL_BACK_REDIS_KEY+"}")
+    @Value("${ACCOUNT_CALL_BACK_REDIS_KEY:" + AccountConstants.DEFAULT_ACCOUNT_CALL_BACK_REDIS_KEY + "}")
     String accountCallBackRedisKey;
 
     /**
@@ -95,7 +94,7 @@ public class ChangeAccountService  {
      */
     @Transactional
     public void tick5(AccountAssetsRecordEntity record, FundFlowEvidenceEntity evidence, AccountEntity account,
-                      String orderId) throws Exception {
+            String orderId) throws Exception {
         if (record == null || evidence == null || account == null) {
             //这段容错代码提至此处：如果有一项为空，下面根本不该进行
 //            System.out.println("record:" + JSON.toJSONString(record));
@@ -108,14 +107,14 @@ public class ChangeAccountService  {
 
         @SuppressWarnings("unused") long t1 = System.currentTimeMillis();
         try {
-            logger.info("tick5:handleOne :" + "||" +
-                    evidence.getId() + "||" + evidence.getAccountId() + "||" + orderId);
+            logger.info(
+                    "tick5:handleOne :" + "||" + evidence.getId() + "||" + evidence.getAccountId() + "||" + orderId);
             this.handleOne(record, evidence, account, orderId);//沿用当前事务
         } catch (Exception e) {
-            logger.info("tick5:handleOne-error :" + "||" +
-                    evidence.getId() + "||" + evidence.getAccountId() + "||" + orderId);
-            logger.error("tick5:handleOne-error :" + "||" +
-                    evidence.getId() + "||" + evidence.getAccountId() + "||" + orderId, e);
+            logger.info("tick5:handleOne-error :" + "||" + evidence.getId() + "||" + evidence.getAccountId() + "||" +
+                    orderId);
+            logger.error("tick5:handleOne-error :" + "||" + evidence.getId() + "||" + evidence.getAccountId() + "||" +
+                    orderId, e);
             e.printStackTrace();
             try {
                 //TODO 发短信
@@ -134,7 +133,8 @@ public class ChangeAccountService  {
 
     //TODO 处理某一条，需要改成
     @Transactional
-    public void handleOne(AccountAssetsRecordEntity record, FundFlowEvidenceEntity evidence, AccountEntity account, String orderId) {
+    public void handleOne(AccountAssetsRecordEntity record, FundFlowEvidenceEntity evidence, AccountEntity account,
+            String orderId) {
 
         //特殊情况
         if (AccountAssetsRecordStatus.CLOSE.equals(record.getRecordStatus())) return;
@@ -142,17 +142,19 @@ public class ChangeAccountService  {
         try {
             logger.info("tick5:change :handleOne begin:" + "||" +
                     (evidence != null ? (evidence.getId() + "||" + evidence.getAccountId()) : "null") + "||" + orderId);
-            boolean change = this.change(record, evidence, account, orderId);//沿用当前事务
+            Boolean change = this.change(record, evidence, account, orderId);//沿用当前事务
 
             logger.info("tick5:notify begin :" + "||" + orderId);
             //执行后续的mq TODO
-            JSONObject json = new JSONObject();
-            json.put("result", change);
-            json.put("busId", evidence.getBusinessId());
-            json.put("id", evidence.getId());
+//            JSONObject json = new JSONObject();
+//            json.put("result", change);
+//            json.put("busId", evidence.getBusinessId());
+//            json.put("id", evidence.getId());
 
             //TODO
-            String content = json.toJSONString();
+            String content = Arrays.asList(evidence.getId(), evidence.getBusinessId(), change,
+                    System.currentTimeMillis()).stream().map(Objects::toString).collect(
+                    Collectors.joining(",")); //json.toJSONString();
             //发送http
 //            messageProducer.sendMessage("accountMessage", content);//发送mq
             RList<String> list = accountRedisson.getList(accountCallBackRedisKey);
@@ -171,12 +173,11 @@ public class ChangeAccountService  {
     //直接变更用户的帐户
     @Transactional
     public boolean change(AccountAssetsRecordEntity record, FundFlowEvidenceEntity evidence, AccountEntity account,
-                          String orderId) throws Exception {
+            String orderId) throws Exception {
 
-        logger.info("tick5:change amount begin:" + "||" +
-                evidence.getId() + "||" + evidence.getAccountId() + "||" + orderId);
+        logger.info("tick5:change amount begin:" + "||" + evidence.getId() + "||" + evidence.getAccountId() + "||" +
+                orderId);
 //		System.out.println("change:"+JSON.toJSONString(record));
-
 
         //获得当前账户余额
         BigDecimal balance = account.getBalance();
@@ -255,9 +256,10 @@ public class ChangeAccountService  {
     public List<AccountAssetsRecordEntity> getRecordList(Long lastId) {
         List<AccountAssetsRecordEntity> recordList =
                 accountAssetsRecordRepository.findTop10ByIdGreaterThanAndRecordStatusOrderById(
-                        lastId, AccountAssetsRecordStatus.INIT);
+                lastId, AccountAssetsRecordStatus.INIT);
         recordList = recordList.stream().map(
-                v -> JSON.parseObject(JSON.toJSONString(v), AccountAssetsRecordEntity.class)).collect(Collectors.toList());
+                v -> JSON.parseObject(JSON.toJSONString(v), AccountAssetsRecordEntity.class)).collect(
+                Collectors.toList());
         return recordList;
     }
 

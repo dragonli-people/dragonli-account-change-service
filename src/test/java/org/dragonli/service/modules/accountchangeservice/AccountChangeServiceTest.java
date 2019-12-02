@@ -4,6 +4,7 @@ import com.alibaba.dubbo.config.annotation.Reference;
 import org.dragonli.service.modules.account.interfaces.AccountChangeService;
 import org.dragonli.service.modules.accountchangeservice.service.ChangeAccountService;
 import org.dragonli.service.modules.accountservice.entity.enums.AccountType;
+import org.dragonli.service.modules.accountservice.entity.enums.CurrencyType;
 import org.dragonli.service.modules.accountservice.entity.enums.EvidenceStatus;
 import org.dragonli.service.modules.accountservice.entity.models.AccountEntity;
 import org.dragonli.service.modules.accountservice.entity.models.AssetEntity;
@@ -11,6 +12,7 @@ import org.dragonli.service.modules.accountservice.entity.models.FundFlowEvidenc
 import org.dragonli.service.modules.accountservice.repository.AccountsRepository;
 import org.dragonli.service.modules.accountservice.repository.AssetRepository;
 import org.dragonli.service.modules.accountservice.repository.FundFlowEvidenceRepository;
+import org.dragonli.service.modules.accountservice.utils.FundFlowEvidenceTool;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.junit4.AbstractTransactionalJUnit4SpringContextTests;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Random;
@@ -27,50 +30,50 @@ import java.util.Random;
 public class AccountChangeServiceTest extends AbstractTransactionalJUnit4SpringContextTests {
     @Reference
     AccountChangeService accountChangeService;
-
     @Autowired
     AssetRepository assetRepository;
-
     @Autowired
     AccountsRepository accountsRepository;
-
     @Autowired
     FundFlowEvidenceRepository evidenceRepository;
-
     @Autowired
     ChangeAccountService changeAccountService;
+    @Autowired
+    FundFlowEvidenceTool fundFlowEvidenceTool;
 
     @Test
     @Rollback(false)
-    public void generalTest() throws Exception{
+    public void generalTest() throws Exception {
 
         AssetEntity asset = assetRepository.get(1L);
         AccountEntity account = accountsRepository.get(1L);
 
-        FundFlowEvidenceEntity evidence = new FundFlowEvidenceEntity();
-        evidence.setAccountId(1L);
-        evidence.setBusinessId(0L);
-        evidence.setCurrency(asset.getCurrency());
-        evidence.setFlowAmount(BigDecimal.ONE);
-        evidence.setFlowStatus(EvidenceStatus.INIT);
-        evidence.setOrderId("aa-bb-cc-dd-1-"+(new Random()).nextInt(10000));
-        evidence.setStep(1);
-        evidence.setTimeout(System.currentTimeMillis()+3000);
-        evidence.setUserId(1L);
-        evidence.setCreatedAt(System.currentTimeMillis());
-        evidence.setUpdatedAt(System.currentTimeMillis());
-        evidence.setVersion(0);
-        evidence = changeAccountService.saveEvidence(evidence);
+        FundFlowEvidenceEntity evidence = fundFlowEvidenceTool.initFundFlowEvidenceEntity(CurrencyType.CNY.name(), 1L,1L
+                ,BigDecimal.ONE, "aa-bb-cc-dd-1-" + (new Random()).nextInt(10000),1,false);
+//        evidence.setAccountId(1L);
+//        evidence.setBusinessId(0L);
+//        evidence.setCurrency(asset.getCurrency());
+//        evidence.setFlowAmount(BigDecimal.ONE);
+//        evidence.setFlowStatus(EvidenceStatus.INIT);
+//        evidence.setOrderId("aa-bb-cc-dd-1-" + (new Random()).nextInt(10000));
+//        evidence.setStep(1);
+//        evidence.setTimeout(System.currentTimeMillis() + 3000);
+//        evidence.setUserId(account.getUserId());
+//        evidence.setCreatedAt(System.currentTimeMillis());
+//        evidence.setUpdatedAt(System.currentTimeMillis());
+//        evidence.setVersion(0);
+        evidence = changeAccountService.saveEvidence(evidence);//just for test
 
         accountChangeService.addChangeRecord(evidence.getId());
-        System.out.println("======111====== "+evidence.getId());
+        System.out.println("======111====== " + evidence.getId());
         Thread.sleep(500000L);
-        System.out.println("=====222======= "+evidence.getId());
+        System.out.println("=====222======= " + evidence.getId());
 
-        new Thread(()->{
-            try{
+        new Thread(() -> {
+            try {
                 Thread.sleep(500000L);
-            }catch (Exception e){}
+            } catch (Exception e) {
+            }
         }).start();
     }
 
@@ -82,5 +85,4 @@ public class AccountChangeServiceTest extends AbstractTransactionalJUnit4SpringC
 //        UserService userService = (UserService) context.getBean(UserService.class);
 //        System.out.println(userService==null);
 //    }
-
 }
