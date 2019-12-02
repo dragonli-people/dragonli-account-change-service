@@ -62,9 +62,10 @@ public class AccountChangeServiceTest extends AbstractTransactionalJUnit4SpringC
 //        evidence.setCreatedAt(System.currentTimeMillis());
 //        evidence.setUpdatedAt(System.currentTimeMillis());
 //        evidence.setVersion(0);
-        evidence = changeAccountService.saveEvidence(evidence);//just for test
 
+        evidence = changeAccountService.saveEvidence(evidence);//just for test
         accountChangeService.addChangeRecord(evidence.getId());
+
         System.out.println("======111====== " + evidence.getId());
         Thread.sleep(500000L);
         System.out.println("=====222======= " + evidence.getId());

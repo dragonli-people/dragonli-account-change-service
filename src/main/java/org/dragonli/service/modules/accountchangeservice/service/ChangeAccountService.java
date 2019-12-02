@@ -1,7 +1,6 @@
 package org.dragonli.service.modules.accountchangeservice.service;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import org.dragonli.service.modules.accountservice.constants.AccountConstants;
 import org.dragonli.service.modules.accountservice.entity.enums.AccountAssetsRecordStatus;
 import org.dragonli.service.modules.accountservice.entity.enums.EvidenceStatus;
@@ -11,8 +10,6 @@ import org.dragonli.service.modules.accountservice.entity.models.FundFlowEvidenc
 import org.dragonli.service.modules.accountservice.repository.AccountAssetsRecordRepository;
 import org.dragonli.service.modules.accountservice.repository.AccountsRepository;
 import org.dragonli.service.modules.accountservice.repository.FundFlowEvidenceRepository;
-import org.redisson.api.RList;
-import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,10 +18,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -40,7 +38,7 @@ public class ChangeAccountService {
     AccountsRepository accountsRepository;
     @Autowired
     @Qualifier(AccountConstants.ACCOUNT_REDIS)
-    RedissonClient accountRedisson;
+    JedisPool jedisPool;
     @Value("${ACCOUNT_CALL_BACK_REDIS_KEY:" + AccountConstants.DEFAULT_ACCOUNT_CALL_BACK_REDIS_KEY + "}")
     String accountCallBackRedisKey;
 
@@ -157,10 +155,22 @@ public class ChangeAccountService {
                     Collectors.joining(",")); //json.toJSONString();
             //发送http
 //            messageProducer.sendMessage("accountMessage", content);//发送mq
-            RList<String> list = accountRedisson.getList(accountCallBackRedisKey);
-            boolean add = list.add(content);
+            Jedis jedis = null;
+            try {
+                jedis = jedisPool.getResource();
+                //注意此处需要向左边push
+                jedis.lpush(accountCallBackRedisKey,content);
+            }catch (Exception e){
+                logger.error(e.getMessage(), e);
+            }
+            finally {
+                if(jedis != null) jedis.close();
+                jedis = null;
+            }
+//            RList<String> list = jedisPool.getList(accountCallBackRedisKey);
+//            boolean add = list.add(content);
             logger.info("tick5:notify end: handleOne finish:" + "||" + evidence.getBusinessId() + " id : " +
-                    evidence.getId() + "||" + orderId + "||" + add);
+                    evidence.getId() + "||" + orderId );
         } catch (Exception e) {
             logger.info("tick5:change error :" + "||" +
                     (evidence != null ? (evidence.getId() + "||" + evidence.getAccountId()) : "null") + "||" + orderId);

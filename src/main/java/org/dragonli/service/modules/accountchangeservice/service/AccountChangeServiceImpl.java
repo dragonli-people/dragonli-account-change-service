@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.dragonli.service.modules.account.interfaces.AccountChangeService;
 import org.dragonli.service.modules.accountchangeservice.AccountChangeVars;
+import org.dragonli.service.modules.accountservice.constants.AccountConstants;
 import org.dragonli.service.modules.accountservice.entity.enums.AccountAssetsRecordStatus;
 import org.dragonli.service.modules.accountservice.entity.models.AccountAssetsRecordEntity;
 import org.dragonli.service.modules.accountservice.entity.models.AccountEntity;
@@ -14,16 +15,15 @@ import org.dragonli.service.modules.accountservice.repository.AccountAssetsRecor
 import org.dragonli.service.modules.accountservice.repository.AccountsRepository;
 import org.dragonli.service.modules.accountservice.repository.AssetRepository;
 import org.dragonli.service.modules.accountservice.repository.FundFlowEvidenceRepository;
-import org.redisson.api.RBatch;
-import org.redisson.api.RQueue;
-import org.redisson.api.RQueueAsync;
-import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
 
 import javax.annotation.PostConstruct;
 import java.util.*;
@@ -56,8 +56,13 @@ public class AccountChangeServiceImpl implements AccountChangeService {
     @Value("${cacheListKey:cacheListKey}")
     private String cacheListKey;
 
+//    @Bean(name= AccountConstants.ACCOUNT_REDIS)
+//    @ConditionalOnProperty(value = "ACCOUNT_REDIS_CONFIG_ON")
+//    public JedisPool createRedisClientAccount(
+
     @Autowired
-    private RedissonClient redissonClient;
+    @Qualifier(AccountConstants.ACCOUNT_REDIS)
+    private JedisPool jedisPool;
     @Autowired
     private ChangeAccountService changeAccountService;
     @Autowired
@@ -164,8 +169,20 @@ public class AccountChangeServiceImpl implements AccountChangeService {
 //
 //		if(r.getGroupId() == null)
 //			data.setGroupId( 0 );
-        RQueue<String> queue = redissonClient.getQueue(cacheListKey + record.getGroupId());
-        queue.add(JSON.toJSONString(record));
+        Jedis jedis = null;
+        try {
+            jedis = jedisPool.getResource();
+            jedis.rpush(cacheListKey + record.getGroupId(),JSON.toJSONString(record));
+        }catch (Exception e){
+            logger.error(e.getMessage(), e);
+            return false;
+        }
+        finally {
+            if(jedis != null) jedis.close();
+            jedis = null;
+        }
+//        RQueue<String> queue = jedisPool.getQueue(cacheListKey + record.getGroupId());
+//        queue.add(JSON.toJSONString(record));
         return true;
     }
 
@@ -216,22 +233,37 @@ public class AccountChangeServiceImpl implements AccountChangeService {
         if (pauseBefore) {
             return;
         }
-//		RList<String> cacheList = redissonClient.getList(cacheListKey+groupId);
+//		RList<String> cacheList = jedisPool.getList(cacheListKey+groupId);
         //lpush cacheListKey1 "\{\"id\":\"1\",\"order_id\":\"10000\"\}"
-        RQueue<String> queue = redissonClient.getQueue(cacheListKey + groupId);
-        int len = Math.min(queue.size(), 1000);//config
-        if (len == 0) {
+        Jedis jedis = null;
+        List<String> result = null;
+        int len = 0;
+        try {
+            jedis = jedisPool.getResource();
+            len = jedis.llen(cacheListKey + groupId).intValue();
+            len = Math.min(len, 100);//config
+            if (len == 0)  return;
+            result = jedis.lrange(cacheListKey + groupId,0,len-1);
+            jedis.ltrim(cacheListKey + groupId,len,-1);
+        }catch (Exception e){
+            logger.error(e.getMessage(), e);
             return;
         }
+        finally {
+            if(jedis != null) jedis.close();
+            jedis = null;
+        }
+//        RQueue<String> queue = jedisPool.getQueue(cacheListKey + groupId);
+
 
         //TODO batch失效
-        RBatch batch = redissonClient.createBatch();
-        RQueueAsync<String> batchQueue = batch.getQueue(cacheListKey + groupId);
-        for (int i = 0; i < len; i++)
-            batchQueue.pollAsync();
-        List<?> result = batch.execute();
+//        RBatch batch = jedisPool.createBatch();
+//        RQueueAsync<String> batchQueue = batch.getQueue(cacheListKey + groupId);
+//        for (int i = 0; i < len; i++)
+//            batchQueue.pollAsync();
+//        List<?> result = batch.execute();
 
-        final List<JSONObject> dataArr = result.stream().map(obj -> JSON.parseObject(obj.toString())).collect(
+        final List<JSONObject> dataArr = result.stream().map(obj -> JSON.parseObject(obj)).collect(
                 Collectors.toList());
         cachedThreadPool.execute(new Runnable() {
             @Override
