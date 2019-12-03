@@ -18,3 +18,5 @@ ACCOUNT_DATA_SOURCE_CONFIG_LOCAL: @ACCOUNT_DATA_SOURCE_CONFIG_LOCAL@
 ACCOUNT_REDIS_CONFIG: ${LOCAL_ACCOUNT_REDIS_CONFIG:service.modules.account.redis-config}
 
 ACCOUNT_REDIS_CONFIG_ON: true
+
+ACCOUNT_GROUP_CONFIG: ${ACCOUNT_GROUP:${service.micro-service.account-change-service.account-group}}

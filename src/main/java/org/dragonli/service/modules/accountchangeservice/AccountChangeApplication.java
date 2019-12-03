@@ -1,23 +1,14 @@
 package org.dragonli.service.modules.accountchangeservice;
 
 import com.alibaba.dubbo.config.spring.context.annotation.DubboComponentScan;
-import io.swagger.models.auth.In;
 import org.apache.log4j.Logger;
 import org.dragonli.service.dubbosupport.DubboApplicationBase;
-import org.dragonli.tools.redis.RedisConfiguration;
-import org.dragonli.tools.redis.redisson.RedisClientBuilder;
-import org.redisson.api.RedissonClient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Bean;
-import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
+import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
@@ -32,24 +23,32 @@ public class AccountChangeApplication extends DubboApplicationBase {
             @Value("${service.micro-service.account-change-service.scan}") String registryId,
             @Value("${service.micro-service.account-change-service.group}") String group,
             @Value("${service.micro-service.account-change-service.http-port}") int port,
-            @Value("${service.micro-service.account-change-service.account-group}") String accountGroup) {
+            @Value("${ACCOUNT_GROUP_CONFIG}") String accountGroup) throws Exception {
         //super(applicationName, registryAddr, protocolName, protocolPort, registryId, port);
 //		super("dubbo-netty", registryAddr, protocolName, 20900, "com.itranswarp.crypto.serviceInterface", 1);
         super(applicationName, registryAddr, protocolName, protocolPort, registryId, port, null,
                 group != null && !"".equals(group.trim()) ? group.trim() : null);
+        String ip = InetAddress.getLocalHost().getHostAddress();
+//        accountGroup = "len(8)";
         if (accountGroup == null || "".equals(accountGroup = accountGroup.trim())) {
             logger.error("service.micro-service.account-change-service.account-group cant be empty!");
             System.exit(-1);
         }
-        if (accountGroup.matches("^\\D+\\d+$")) {
-            int count = Integer.parseInt(accountGroup.replaceAll("^\\D+", ""));
+        if (accountGroup.matches("^\\D+\\d+\\D*$")) {
+            int count = Integer.parseInt(accountGroup.replaceAll("^\\D+", "").replaceAll("\\D+$", ""));
             String[] arr = new String[count];
             for (int i = 0; i < arr.length; i++)
                 arr[i] = String.valueOf(i);
             accountGroup = Arrays.asList(arr).stream().collect(Collectors.joining(","));
+            accountGroup += ":" + ip;
         }
-        if(!accountGroup.matches("^\\d+[,\\d]*\\d+$")) {
-            logger.error("service.micro-service.account-change-service.account-group must be number and ',' or +${number}");
+        accountGroup = Arrays.asList(accountGroup.split("\\|")).stream().filter(
+                v -> ip.equals(v.split(":")[1])).findFirst().orElseThrow(
+                () -> new Exception("account-group cant find item end with:  :" + ip));
+        accountGroup = accountGroup.split(":")[0];
+        if (!accountGroup.matches("^\\d+[,\\d]*\\d+$")) {
+            logger.error(
+                    "service.micro-service.account-change-service.account-group must be number and ',' or +${number}");
             System.exit(-1);
         }
         AccountChangeVars.groups.addAll(
