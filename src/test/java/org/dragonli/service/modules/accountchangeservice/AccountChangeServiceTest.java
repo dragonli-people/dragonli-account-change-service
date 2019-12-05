@@ -3,9 +3,7 @@ package org.dragonli.service.modules.accountchangeservice;
 import com.alibaba.dubbo.config.annotation.Reference;
 import org.dragonli.service.modules.account.interfaces.AccountChangeService;
 import org.dragonli.service.modules.accountchangeservice.service.ChangeAccountService;
-import org.dragonli.service.modules.accountservice.entity.enums.AccountType;
 import org.dragonli.service.modules.accountservice.entity.enums.CurrencyType;
-import org.dragonli.service.modules.accountservice.entity.enums.EvidenceStatus;
 import org.dragonli.service.modules.accountservice.entity.models.AccountEntity;
 import org.dragonli.service.modules.accountservice.entity.models.AssetEntity;
 import org.dragonli.service.modules.accountservice.entity.models.FundFlowEvidenceEntity;
@@ -20,7 +18,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.junit4.AbstractTransactionalJUnit4SpringContextTests;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Random;
